@@ -146,13 +146,6 @@
             background: #4f6ef7;
             color: white;
         }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
-        .btn-danger:hover:not(:disabled) {
-            background: #dc2626;
-        }
         .result-box {
             margin-top: 14px;
             padding: 14px 16px;
@@ -348,6 +341,19 @@
             font-size: 12px;
             color: #0369a1;
         }
+        .auto-fill-tip {
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #166534;
+            display: none;
+        }
+        .auto-fill-tip.show {
+            display: block;
+        }
         @media (max-width: 500px) {
             .container {
                 padding: 0;
@@ -418,20 +424,24 @@
         </div>
         <div class="form-group">
             <label>序列号：</label>
-            <input type="text" id="sn" disabled>
+            <input type="text" id="sn" placeholder="绑定安全令后自动填入" disabled>
         </div>
         <div class="form-group">
             <label>还原码：</label>
-            <input type="text" id="code" disabled>
+            <input type="text" id="code" placeholder="绑定安全令后自动填入" disabled>
         </div>
         <div class="form-group">
             <label>40位密钥：</label>
-            <input type="text" id="key" disabled>
+            <input type="text" id="key" placeholder="绑定安全令后自动填入" disabled>
         </div>
 
         <div class="btn-group">
             <button class="btn btn-primary" onclick="convertFormat()" disabled id="convertBtn">开始转换</button>
             <button class="btn btn-secondary" onclick="clearAll()" disabled id="clearBtn">清空内容</button>
+        </div>
+
+        <div class="auto-fill-tip" id="autoFillTip">
+            ✅ 安全令绑定成功！数据已自动填入上方三个框内。
         </div>
 
         <div class="form-group" style="margin-top:16px;">
@@ -505,7 +515,7 @@
     let lastClickTime = 0;
 
     // ================================================================
-    // ===== 防护：点击频率限制（2秒内只能点一次） =====
+    // ===== 防护：点击频率限制 =====
     // ================================================================
 
     function rateLimitClick() {
@@ -552,7 +562,7 @@
     }
 
     // ================================================================
-    // ===== 密码验证（后端验证 + 前端防护） =====
+    // ===== 密码验证 =====
     // ================================================================
 
     async function verifyPassword() {
@@ -591,7 +601,7 @@
                 document.getElementById('copyAllBtn').disabled = false;
                 document.getElementById('exportBtn').disabled = false;
 
-                document.getElementById('globalPassword').value = ''; // 清空密码框
+                document.getElementById('globalPassword').value = '';
                 setStatus('✅ 已解锁，所有功能可用', 'success');
                 showToast('✅ 密码正确，已解锁全部功能', 'success');
             } else {
@@ -605,7 +615,7 @@
     }
 
     // ================================================================
-    // ===== 工具一：账号密钥格式整理（带 XSS 防护） =====
+    // ===== 工具一：账号密钥格式整理 =====
     // ================================================================
 
     function convertFormat() {
@@ -635,6 +645,7 @@
         document.getElementById('key').value = '';
         document.getElementById('result1').innerHTML = '<span class="empty">等待转换...</span>';
         document.getElementById('tip1').classList.remove('show');
+        document.getElementById('autoFillTip').classList.remove('show');
         showToast('已清空', 'info');
     }
 
@@ -693,13 +704,16 @@
         showToast('✅ 已复制全部结果', 'success');
     }
 
-    // ===== 导出 TXT =====
+    // ================================================================
+    // ===== 导出 TXT（文件名用邮箱） =====
+    // ================================================================
+
     function exportTxt() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
 
-        const serial = document.getElementById('authSerial').textContent.trim();
-        const restore = document.getElementById('authRestore').textContent.trim();
-        const secret = document.getElementById('authSecret').textContent.trim();
+        const serial = currentAuthData?.serial || document.getElementById('authSerial').textContent.trim();
+        const restore = currentAuthData?.restoreCode || document.getElementById('authRestore').textContent.trim();
+        const secret = currentAuthData?.deviceSecret || document.getElementById('authSecret').textContent.trim();
 
         const mailPwd = document.getElementById('mailPwd').value.trim();
         const sn = document.getElementById('sn').value.trim();
@@ -715,7 +729,14 @@
         const email = mailPwdParts[0] || '';
         const pwd = mailPwdParts.slice(1).join('----') || '';
 
-        const convertResult = `${email}{r}密码：${pwd}{r}序列号：${sn || serial}{r}还原码：${code || restore}{r}40位密钥：${key || secret}`;
+        const finalSn = sn || serial;
+        const finalCode = code || restore;
+        const finalKey = key || secret;
+
+        const convertResult = `${email}----${pwd}
+序列号：${finalSn}
+还原码：${finalCode}
+40位密钥：${finalKey}`;
 
         const content = `========================================
 📦 账号密钥信息
@@ -724,9 +745,9 @@
 原始信息：
 邮箱：${email}
 密码：${pwd}
-序列号：${sn || serial}
-还原码：${code || restore}
-40位密钥：${key || secret}
+序列号：${finalSn}
+还原码：${finalCode}
+40位密钥：${finalKey}
 
 ========================================
 转换结果：
@@ -743,13 +764,21 @@ Device Secret: ${secret}`;
         const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `authenticator_${serial}.txt`;
+
+        // ✅ 文件名使用邮箱，若邮箱为空则回退为序列号
+        const emailForFileName = email || '';
+        const fileName = emailForFileName ? `${emailForFileName}.txt` : `authenticator_${serial}.txt`;
+        a.download = fileName;
+
         a.click();
         URL.revokeObjectURL(a.href);
-        showToast('✅ 导出成功', 'success');
+        showToast(`✅ 导出成功：${fileName}`, 'success');
     }
 
+    // ================================================================
     // ===== 登录暴雪 =====
+    // ================================================================
+
     function openBattleNetLogin() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
         if (!rateLimitClick()) return;
@@ -758,7 +787,10 @@ Device Secret: ${secret}`;
         showToast('✅ 已打开登录页', 'success');
     }
 
+    // ================================================================
     // ===== 开始处理 =====
+    // ================================================================
+
     async function startProcess() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
         if (!rateLimitClick()) return;
@@ -799,14 +831,30 @@ Device Secret: ${secret}`;
             const data2 = await res2.json();
             if (!data2.serial) throw new Error(data2.error || '绑定失败');
 
+            // ============================================================
+            // ✅ 自动填充：先清空再填入
+            // ============================================================
+            document.getElementById('sn').value = '';
+            document.getElementById('code').value = '';
+            document.getElementById('key').value = '';
+
+            document.getElementById('sn').value = data2.serial;
+            document.getElementById('code').value = data2.restoreCode;
+            document.getElementById('key').value = data2.deviceSecret;
+
+            document.getElementById('autoFillTip').classList.add('show');
+
+            // ============================================================
+            // ✅ 显示在下方结果区域
+            // ============================================================
             document.getElementById('authSerial').textContent = data2.serial;
             document.getElementById('authRestore').textContent = data2.restoreCode;
             document.getElementById('authSecret').textContent = data2.deviceSecret;
             document.getElementById('authResultArea').style.display = 'block';
             currentAuthData = data2;
 
-            setStatus('✅ 绑定成功！', 'success');
-            showToast('🎉 安全令绑定成功！', 'success');
+            showToast('✅ 绑定成功！数据已自动填入上方对应框内', 'success');
+            setStatus('✅ 绑定成功！数据已自动填充', 'success');
 
         } catch (err) {
             setStatus('❌ ' + err.message, 'error');
@@ -829,7 +877,7 @@ Device Secret: ${secret}`;
     }
 
     // ================================================================
-    // ===== 页面加载 =====
+    // ===== 页面加载自动检测 SSO Token =====
     // ================================================================
 
     document.addEventListener('DOMContentLoaded', () => {
