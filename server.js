@@ -23,7 +23,7 @@ app.use('/api/', limiter);
 // 2. 密码错误记录（防暴力破解）
 // =============================================================
 const wrongPasswordAttempts = new Map();
-const VALID_PASSWORD = 'battlenet2024';  // ⚠️ 可修改
+const VALID_PASSWORD = 'dong1dong12024';  // ⚠️ 可修改
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
