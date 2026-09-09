@@ -1,89 +1,170 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const VALID_PASSWORD = 'dong1dong12024';
+// =============================================================
+// 1. 限流（15分钟最多100次请求）
+// =============================================================
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: '请求过于频繁，请 15 分钟后重试' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/', limiter);
 
-// ===== 密码验证 =====
-app.post('/api/verify-password', (req, res) => {
-  const { password } = req.body;
-  res.json({ valid: password === VALID_PASSWORD });
+// =============================================================
+// 2. 密码错误记录（防暴力破解）
+// =============================================================
+const wrongPasswordAttempts = new Map();
+const VALID_PASSWORD = 'battlenet2024';  // ⚠️ 可修改
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// =============================================================
+// 3. 密码验证
+// =============================================================
+app.post('/api/verify-password', async (req, res) => {
+    const { password } = req.body;
+    const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
+
+    // 检查是否被封禁
+    if (wrongPasswordAttempts.has(ip)) {
+        const data = wrongPasswordAttempts.get(ip);
+        if (data.count >= 5) {
+            const timeElapsed = (Date.now() - data.lastAttempt) / 60000;
+            if (timeElapsed < 15) {
+                return res.status(429).json({
+                    error: `尝试次数过多，请 ${Math.ceil(15 - timeElapsed)} 分钟后重试`
+                });
+            } else {
+                wrongPasswordAttempts.delete(ip);
+            }
+        }
+    }
+
+    if (password === VALID_PASSWORD) {
+        wrongPasswordAttempts.delete(ip);
+        console.log(`✅ 密码验证成功 - IP: ${ip}`);
+        res.json({ valid: true });
+    } else {
+        if (wrongPasswordAttempts.has(ip)) {
+            const data = wrongPasswordAttempts.get(ip);
+            data.count += 1;
+            data.lastAttempt = Date.now();
+        } else {
+            wrongPasswordAttempts.set(ip, { count: 1, lastAttempt: Date.now() });
+        }
+
+        const attemptCount = wrongPasswordAttempts.get(ip).count;
+        console.log(`❌ 密码验证失败 - IP: ${ip}，尝试次数: ${attemptCount}`);
+        await sleep(2000);
+        res.status(401).json({ valid: false });
+    }
 });
 
-// ===== 健康检查 =====
+// =============================================================
+// 4. 健康检查
+// =============================================================
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+    res.json({ status: 'ok' });
 });
 
-// ===== 换取 Bearer Token =====
+// =============================================================
+// 5. 换取 Bearer Token
+// =============================================================
 app.post('/api/exchange-token', async (req, res) => {
-  const { ssoToken } = req.body;
-  if (!ssoToken) {
-    return res.status(400).json({ error: '缺少 SSO Token' });
-  }
+    const { ssoToken } = req.body;
+    if (!ssoToken) {
+        return res.status(400).json({ error: '缺少 SSO Token' });
+    }
 
-  try {
-    const response = await axios.post(
-      'https://oauth.battle.net/oauth/sso',
-      new URLSearchParams({
-        client_id: 'baedda12fe054e4abdfc3ad7bdea970a',
-        grant_type: 'client_sso',
-        scope: 'auth.authenticator',
-        token: ssoToken
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
-        }
-      }
-    );
+    try {
+        const response = await axios.post(
+            'https://oauth.battle.net/oauth/sso',
+            new URLSearchParams({
+                client_id: 'baedda12fe054e4abdfc3ad7bdea970a',
+                grant_type: 'client_sso',
+                scope: 'auth.authenticator',
+                token: ssoToken
+            }),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8'
+                }
+            }
+        );
 
-    const { access_token } = response.data;
-    res.json({ bearerToken: access_token });
-  } catch (error) {
-    console.error('换取 Token 失败:', error.response?.data || error.message);
-    res.status(500).json({
-      error: '换取 Token 失败',
-      detail: error.response?.data || error.message
-    });
-  }
+        const { access_token } = response.data;
+        res.json({ bearerToken: access_token });
+    } catch (error) {
+        console.error('换取 Token 失败:', error.response?.data || error.message);
+        res.status(500).json({
+            error: '换取 Token 失败',
+            detail: error.response?.data || error.message
+        });
+    }
 });
 
-// ===== 绑定安全令 =====
+// =============================================================
+// 6. 绑定安全令
+// =============================================================
 app.post('/api/bind-authenticator', async (req, res) => {
-  const { bearerToken } = req.body;
-  if (!bearerToken) {
-    return res.status(400).json({ error: '缺少 Bearer Token' });
-  }
+    const { bearerToken } = req.body;
+    if (!bearerToken) {
+        return res.status(400).json({ error: '缺少 Bearer Token' });
+    }
 
-  try {
-    const response = await axios.post(
-      'https://authenticator-rest-api.bnet-identity.blizzard.net/v1/authenticator',
-      {},
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${bearerToken}`
-        }
-      }
-    );
+    try {
+        const response = await axios.post(
+            'https://authenticator-rest-api.bnet-identity.blizzard.net/v1/authenticator',
+            {},
+            {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${bearerToken}`
+                }
+            }
+        );
 
-    const { serial, restoreCode, deviceSecret } = response.data;
-    res.json({ serial, restoreCode, deviceSecret });
-  } catch (error) {
-    console.error('绑定安全令失败:', error.response?.data || error.message);
-    res.status(500).json({
-      error: '绑定安全令失败',
-      detail: error.response?.data || error.message
-    });
-  }
+        const { serial, restoreCode, deviceSecret } = response.data;
+        res.json({ serial, restoreCode, deviceSecret });
+    } catch (error) {
+        console.error('绑定安全令失败:', error.response?.data || error.message);
+        res.status(500).json({
+            error: '绑定安全令失败',
+            detail: error.response?.data || error.message
+        });
+    }
 });
 
+// =============================================================
+// 7. 根路径提示
+// =============================================================
+app.get('/', (req, res) => {
+    res.json({
+        message: '✅ 后端服务运行正常',
+        endpoints: {
+            health: '/api/health',
+            verifyPassword: '/api/verify-password (POST)',
+            exchangeToken: '/api/exchange-token (POST)',
+            bindAuthenticator: '/api/bind-authenticator (POST)'
+        }
+    });
+});
+
+// =============================================================
+// 8. 启动服务
+// =============================================================
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`✅ 后端服务已启动，端口: ${PORT}`);
+    console.log(`✅ 后端服务已启动，端口: ${PORT}`);
 });
