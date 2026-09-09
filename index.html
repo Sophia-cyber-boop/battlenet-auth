@@ -740,10 +740,7 @@
         const finalCode = code || restore;
         const finalKey = key || secret;
 
-        const convertResult = `${email}----${pwd}
-序列号：${finalSn}
-还原码：${finalCode}
-40位密钥：${finalKey}`;
+        const convertResult = `${email}{r}密码：${pwd}{r}序列号：${finalSn}{r}还原码：${finalCode}{r}40位密钥：${finalKey}`;
 
         const content = `========================================
 📦 账号密钥信息
