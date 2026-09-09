@@ -459,7 +459,7 @@
         <div class="card-title">🔐 绑定暴雪安全令</div>
 
         <div class="hint-box">
-            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong><br>
+            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong>，系统会自动提取 SSO Token。<br>
             例如：<code>https://account.battle.net/login/en/localhost?ST=US-xxxxx&flowTrackingId=xxx</code>
         </div>
 
@@ -508,7 +508,11 @@
     // ===== 配置 =====
     // ================================================================
 
+    // ⚠️ 改成你的后端地址
     const BACKEND_URL = 'https://battlenet-auth-cn.onrender.com';
+
+    // ⚠️ API 
+    const API_KEY = 'dongjdongj9494';  // ← 改成你自己的
 
     let isUnlocked = false;
     let currentAuthData = null;
@@ -580,7 +584,10 @@
         try {
             const response = await fetch(`${BACKEND_URL}/api/verify-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': API_KEY  // ⚠️ 带上 API 密钥
+                },
                 body: JSON.stringify({ password: pwd })
             });
             const data = await response.json();
@@ -765,7 +772,6 @@ Device Secret: ${secret}`;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
 
-        // ✅ 文件名使用邮箱，若邮箱为空则回退为序列号
         const emailForFileName = email || '';
         const fileName = emailForFileName ? `${emailForFileName}.txt` : `authenticator_${serial}.txt`;
         a.download = fileName;
@@ -817,7 +823,10 @@ Device Secret: ${secret}`;
         try {
             const res1 = await fetch(`${BACKEND_URL}/api/exchange-token`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': API_KEY  // ⚠️ 带上 API 密钥
+                },
                 body: JSON.stringify({ ssoToken })
             });
             const data1 = await res1.json();
@@ -825,7 +834,10 @@ Device Secret: ${secret}`;
 
             const res2 = await fetch(`${BACKEND_URL}/api/bind-authenticator`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': API_KEY  // ⚠️ 带上 API 密钥
+                },
                 body: JSON.stringify({ bearerToken: data1.bearerToken })
             });
             const data2 = await res2.json();
