@@ -146,6 +146,13 @@
             background: #4f6ef7;
             color: white;
         }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
         .result-box {
             margin-top: 14px;
             padding: 14px 16px;
@@ -385,7 +392,7 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== 密码验证区域 ===== -->
+    <!-- ===== 密码验证区域（后端验证） ===== -->
     <!-- ============================================================ -->
     <div class="card">
         <div class="password-section locked" id="passwordSection">
@@ -442,7 +449,7 @@
         <div class="card-title">🔐 绑定暴雪安全令</div>
 
         <div class="hint-box">
-            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong>，系统会自动提取 SSO Token。<br>
+            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong>，系统会自动提取 <br>
             例如：<code>https://account.battle.net/login/en/localhost?ST=US-xxxxx&flowTrackingId=xxx</code>
         </div>
 
@@ -478,7 +485,8 @@
                 </div>
             </div>
             <div class="btn-group" style="margin-top:10px;">
-                <button class="btn btn-outline" onclick="copyAllAuthResult()" disabled id="copyAllBtn">📋 复制全部结果</button>
+                <button class="btn btn-outline" onclick="copyAllAuthResult()" id="copyAllBtn">📋 复制全部结果</button>
+                <button class="btn btn-success" onclick="exportTxt()" id="exportBtn">📥 导出 TXT</button>
             </div>
         </div>
     </div>
@@ -492,8 +500,6 @@
 
     // ⚠️ 重要：替换成你的 Render 后端地址
     const BACKEND_URL = 'https://battlenet-auth-cn.onrender.com';
-    // 访问密码（可修改）
-    const VALID_PASSWORD = 'battlenet2024';
 
     let isUnlocked = false;
     let currentAuthData = null;
@@ -521,38 +527,53 @@
     }
 
     // ================================================================
-    // ===== 密码验证 =====
+    // ===== 密码验证（后端验证） =====
     // ================================================================
 
-    function verifyPassword() {
+    async function verifyPassword() {
         const pwd = document.getElementById('globalPassword').value.trim();
         if (!pwd) {
             showToast('请输入访问密码', 'error');
             setStatus('❌ 请输入密码', 'error');
             return;
         }
-        if (pwd !== VALID_PASSWORD) {
-            showToast('❌ 密码错误', 'error');
-            setStatus('❌ 密码错误', 'error');
-            return;
+
+        setStatus('⏳ 验证中...', 'loading');
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/verify-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pwd })
+            });
+            const data = await response.json();
+
+            if (data.valid) {
+                isUnlocked = true;
+                document.getElementById('passwordSection').className = 'password-section unlocked';
+                document.getElementById('passwordStatus').textContent = '🔓 已解锁';
+                document.getElementById('passwordStatus').className = 'password-status unlocked';
+
+                document.querySelectorAll('.form-group input').forEach(el => el.disabled = false);
+                document.getElementById('convertBtn').disabled = false;
+                document.getElementById('clearBtn').disabled = false;
+                document.getElementById('loginBtn').disabled = false;
+                document.getElementById('ssoToken').disabled = false;
+                document.getElementById('startProcessBtn').disabled = false;
+                document.getElementById('clearAuthBtn').disabled = false;
+                document.getElementById('copyAllBtn').disabled = false;
+                document.getElementById('exportBtn').disabled = false;
+
+                setStatus('✅ 已解锁，所有功能可用', 'success');
+                showToast('✅ 密码正确，已解锁全部功能', 'success');
+            } else {
+                showToast('❌ 密码错误', 'error');
+                setStatus('❌ 密码错误', 'error');
+            }
+        } catch (e) {
+            showToast('❌ 验证失败: ' + e.message, 'error');
+            setStatus('❌ 验证失败', 'error');
         }
-
-        isUnlocked = true;
-        document.getElementById('passwordSection').className = 'password-section unlocked';
-        document.getElementById('passwordStatus').textContent = '🔓 已解锁';
-        document.getElementById('passwordStatus').className = 'password-status unlocked';
-
-        document.querySelectorAll('.form-group input').forEach(el => el.disabled = false);
-        document.getElementById('convertBtn').disabled = false;
-        document.getElementById('clearBtn').disabled = false;
-        document.getElementById('loginBtn').disabled = false;
-        document.getElementById('ssoToken').disabled = false;
-        document.getElementById('startProcessBtn').disabled = false;
-        document.getElementById('clearAuthBtn').disabled = false;
-        document.getElementById('copyAllBtn').disabled = false;
-
-        setStatus('✅ 已解锁，所有功能可用', 'success');
-        showToast('✅ 密码正确，已解锁全部功能', 'success');
     }
 
     // ================================================================
@@ -644,6 +665,60 @@
         showToast('✅ 已复制全部结果', 'success');
     }
 
+    // ===== 导出 TXT =====
+    function exportTxt() {
+        const serial = document.getElementById('authSerial').textContent.trim();
+        const restore = document.getElementById('authRestore').textContent.trim();
+        const secret = document.getElementById('authSecret').textContent.trim();
+
+        const mailPwd = document.getElementById('mailPwd').value.trim();
+        const sn = document.getElementById('sn').value.trim();
+        const code = document.getElementById('code').value.trim();
+        const key = document.getElementById('key').value.trim();
+
+        if (!serial || !restore || !secret) {
+            showToast('没有完整的安全令结果可导出', 'error');
+            return;
+        }
+
+        const mailPwdParts = mailPwd.split('----');
+        const email = mailPwdParts[0] || '';
+        const pwd = mailPwdParts.slice(1).join('----') || '';
+
+        const convertResult = `${email}{r}密码：${pwd}{r}序列号：${sn || serial}{r}还原码：${code || restore}{r}40位密钥：${key || secret}`;
+
+        const content = `========================================
+📦 账号密钥信息
+========================================
+
+原始信息：
+邮箱：${email}
+密码：${pwd}
+序列号：${sn || serial}
+还原码：${code || restore}
+40位密钥：${key || secret}
+
+========================================
+转换结果：
+========================================
+${convertResult}
+
+========================================
+安全令信息：
+========================================
+Serial: ${serial}
+Restore Code: ${restore}
+Device Secret: ${secret}`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `authenticator_${serial}.txt`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('✅ 导出成功', 'success');
+    }
+
     // ===== 登录暴雪 =====
     function openBattleNetLogin() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
@@ -652,7 +727,7 @@
         showToast('✅ 已打开登录页', 'success');
     }
 
-    // ===== 开始处理（自动提取 SSO Token） =====
+    // ===== 开始处理 =====
     async function startProcess() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
 
@@ -662,7 +737,6 @@
             return;
         }
 
-        // ✅ 自动提取 SSO Token（支持完整 URL 或纯 Token）
         let ssoToken = rawUrl;
         const match = rawUrl.match(/[?&]ST=([^&]+)/);
         if (match) ssoToken = match[1];
@@ -677,7 +751,6 @@
         btn.disabled = true;
 
         try {
-            // 步骤1：换取 Bearer Token
             const res1 = await fetch(`${BACKEND_URL}/api/exchange-token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -686,7 +759,6 @@
             const data1 = await res1.json();
             if (!data1.bearerToken) throw new Error(data1.error || '换取 Token 失败');
 
-            // 步骤2：绑定安全令
             const res2 = await fetch(`${BACKEND_URL}/api/bind-authenticator`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -695,7 +767,6 @@
             const data2 = await res2.json();
             if (!data2.serial) throw new Error(data2.error || '绑定失败');
 
-            // 显示结果
             document.getElementById('authSerial').textContent = data2.serial;
             document.getElementById('authRestore').textContent = data2.restoreCode;
             document.getElementById('authSecret').textContent = data2.deviceSecret;
