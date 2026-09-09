@@ -8,6 +8,22 @@ app.use(cors());
 app.use(express.json());
 
 // =============================================================
+// 🔑 API 密钥验证（防止别人盗用你的后端）
+// 
+// =============================================================
+const API_KEY = 'dongjdongj9494';  // ← 改成你自己的
+
+app.use('/api/*', (req, res, next) => {
+    const userKey = req.headers['x-api-key'];
+    if (userKey !== API_KEY) {
+        return res.status(403).json({ 
+            error: '无效的 API 密钥，请检查配置' 
+        });
+    }
+    next();
+});
+
+// =============================================================
 // 1. 限流（15分钟最多100次请求）
 // =============================================================
 const limiter = rateLimit({
@@ -20,23 +36,34 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // =============================================================
-// 2. 密码错误记录（防暴力破解）
+// 2. 更严格的限流：密码验证接口（5分钟最多10次）
+// =============================================================
+const passwordLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 10,
+    message: { error: '密码尝试次数过多，请 5 分钟后重试' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api/verify-password', passwordLimiter);
+
+// =============================================================
+// 3. 密码错误记录（防暴力破解）
 // =============================================================
 const wrongPasswordAttempts = new Map();
-const VALID_PASSWORD = 'dong1dong12024';  // ⚠️ 可修改
+const VALID_PASSWORD = 'battlenet2024';  // ← 你可以改这个密码
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // =============================================================
-// 3. 密码验证
+// 4. 密码验证
 // =============================================================
 app.post('/api/verify-password', async (req, res) => {
     const { password } = req.body;
     const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
 
-    // 检查是否被封禁
     if (wrongPasswordAttempts.has(ip)) {
         const data = wrongPasswordAttempts.get(ip);
         if (data.count >= 5) {
@@ -72,14 +99,14 @@ app.post('/api/verify-password', async (req, res) => {
 });
 
 // =============================================================
-// 4. 健康检查
+// 5. 健康检查
 // =============================================================
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
 // =============================================================
-// 5. 换取 Bearer Token
+// 6. 换取 Bearer Token
 // =============================================================
 app.post('/api/exchange-token', async (req, res) => {
     const { ssoToken } = req.body;
@@ -115,7 +142,7 @@ app.post('/api/exchange-token', async (req, res) => {
 });
 
 // =============================================================
-// 6. 绑定安全令
+// 7. 绑定安全令
 // =============================================================
 app.post('/api/bind-authenticator', async (req, res) => {
     const { bearerToken } = req.body;
@@ -147,7 +174,7 @@ app.post('/api/bind-authenticator', async (req, res) => {
 });
 
 // =============================================================
-// 7. 根路径提示
+// 8. 根路径提示
 // =============================================================
 app.get('/', (req, res) => {
     res.json({
@@ -162,7 +189,7 @@ app.get('/', (req, res) => {
 });
 
 // =============================================================
-// 8. 启动服务
+// 9. 启动服务
 // =============================================================
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
