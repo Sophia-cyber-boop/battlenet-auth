@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号工具集</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            padding: 30px 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .container {
+            max-width: 780px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            padding: 24px 28px;
+            border-radius: 16px 16px 0 0;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        .header p {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+        .card {
+            background: white;
+            border-radius: 0 0 16px 16px;
+            padding: 28px 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+        .card-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 12px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fafafa;
+            transition: 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4f6ef7;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.1);
+        }
+        .form-group input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .btn {
+            padding: 9px 22px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        .btn-primary {
+            background: #4f6ef7;
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #3b5de7;
+        }
+        .btn-secondary {
+            background: #e8eaed;
+            color: #333;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: #d5d8dd;
+        }
+        .btn-success {
+            background: #22c55e;
+            color: white;
+        }
+        .btn-success:hover:not(:disabled) {
+            background: #16a34a;
+        }
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-warning:hover:not(:disabled) {
+            background: #d97706;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #4f6ef7;
+            border: 1px solid #4f6ef7;
+        }
+        .btn-outline:hover:not(:disabled) {
+            background: #4f6ef7;
+            color: white;
+        }
+        .result-box {
+            margin-top: 14px;
+            padding: 14px 16px;
+            background: #f8f9fc;
+            border: 1px solid #e8eaed;
+            border-radius: 8px;
+            word-break: break-all;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 14px;
+            line-height: 1.7;
+            min-height: 44px;
+            color: #1a1a2e;
+        }
+        .result-box:hover {
+            background: #f0f4ff;
+            border-color: #4f6ef7;
+        }
+        .result-box .empty {
+            color: #aaa;
+            font-size: 13px;
+        }
+        .tip {
+            color: #22c55e;
+            font-size: 13px;
+            margin-left: 10px;
+            display: none;
+        }
+        .tip.show {
+            display: inline;
+        }
+        .auth-result {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .auth-result .item {
+            background: #f8f9fc;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #e8eaed;
+        }
+        .auth-result .item .label {
+            font-size: 12px;
+            color: #888;
+            font-weight: 500;
+        }
+        .auth-result .item .value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-top: 2px;
+            word-break: break-all;
+            cursor: pointer;
+        }
+        .auth-result .item .value:hover {
+            color: #4f6ef7;
+        }
+        .password-section {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e8eaed;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .password-section.unlocked {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .password-section.locked {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+        .password-section label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            white-space: nowrap;
+        }
+        .password-section input {
+            flex: 1;
+            min-width: 180px;
+            padding: 9px 14px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            transition: 0.2s;
+        }
+        .password-section input:focus {
+            outline: none;
+            border-color: #4f6ef7;
+            box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.1);
+        }
+        .password-section .btn {
+            margin-bottom: 0;
+        }
+        .password-status {
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .password-status.locked {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .password-status.unlocked {
+            color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+        }
+        .status-bar {
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: #f8f9fc;
+            border: 1px solid #e8eaed;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+            margin-bottom: 16px;
+        }
+        .status-bar.loading {
+            color: #4f6ef7;
+            border-color: #4f6ef7;
+            background: rgba(79, 110, 247, 0.05);
+        }
+        .status-bar.success {
+            color: #22c55e;
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .status-bar.error {
+            color: #ef4444;
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e1e32;
+            color: #e0e0f0;
+            padding: 12px 28px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            opacity: 0;
+            transition: 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+            z-index: 99;
+            backdrop-filter: blur(8px);
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0px);
+        }
+        #toast.error {
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+        #toast.success {
+            border-color: #22c55e;
+            color: #86efac;
+        }
+        .hint-box {
+            background: #e0f2fe;
+            border: 1px solid #38bdf8;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #0369a1;
+            line-height: 1.6;
+        }
+        .hint-box code {
+            background: #bae6fd;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #0369a1;
+        }
+        @media (max-width: 500px) {
+            .container {
+                padding: 0;
+            }
+            .card {
+                padding: 18px 16px;
+            }
+            .header {
+                padding: 18px 16px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .auth-result {
+                grid-template-columns: 1fr;
+            }
+            .btn-group {
+                flex-direction: column;
+            }
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+            .password-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .password-section label {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ===== 头部 ===== -->
+    <div class="header">
+        <h1>📦 账号工具集</h1>
+        <p>密钥格式整理 · 暴雪安全令绑定</p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ===== 密码验证区域 ===== -->
+    <!-- ============================================================ -->
+    <div class="card">
+        <div class="password-section locked" id="passwordSection">
+            <label>🔑 访问密码</label>
+            <input type="password" id="globalPassword" placeholder="请输入访问密码...">
+            <button class="btn btn-primary" onclick="verifyPassword()">验证</button>
+            <span class="password-status locked" id="passwordStatus">🔒 未解锁</span>
+        </div>
+
+        <div class="status-bar" id="statusBar">⚡ 请输入密码解锁全部功能</div>
+        <div id="toast"></div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ===== 工具一：账号密钥格式整理 ===== -->
+    <!-- ============================================================ -->
+    <div class="card">
+        <div class="card-title">📝 账号密钥格式整理</div>
+
+        <div class="form-group">
+            <label>邮箱+密码（原用 ---- 分隔）：</label>
+            <input type="text" id="mailPwd" placeholder="例如：xxx@hotmail.com----123456" disabled>
+        </div>
+        <div class="form-group">
+            <label>序列号：</label>
+            <input type="text" id="sn" disabled>
+        </div>
+        <div class="form-group">
+            <label>还原码：</label>
+            <input type="text" id="code" disabled>
+        </div>
+        <div class="form-group">
+            <label>40位密钥：</label>
+            <input type="text" id="key" disabled>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="convertFormat()" disabled id="convertBtn">开始转换</button>
+            <button class="btn btn-secondary" onclick="clearAll()" disabled id="clearBtn">清空内容</button>
+        </div>
+
+        <div class="form-group" style="margin-top:16px;">
+            <label>转换结果（点击区域自动复制）：<span class="tip" id="tip1">✅ 已复制</span></label>
+            <div class="result-box" id="result1" onclick="copyResult('result1', 'tip1')">
+                <span class="empty">等待转换...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ===== 工具二：绑定暴雪安全令 ===== -->
+    <!-- ============================================================ -->
+    <div class="card">
+        <div class="card-title">🔐 绑定暴雪安全令</div>
+
+        <div class="hint-box">
+            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong>，系统会自动提取 SSO Token。<br>
+            例如：<code>https://account.battle.net/login/en/localhost?ST=US-xxxxx&flowTrackingId=xxx</code>
+        </div>
+
+        <div class="btn-group" style="margin-bottom:16px;">
+            <button class="btn btn-warning" onclick="openBattleNetLogin()" disabled id="loginBtn">🔑 登录暴雪</button>
+        </div>
+
+        <div class="form-group">
+            <label>① 粘贴登录后的完整 URL：</label>
+            <input type="text" id="ssoToken" placeholder="直接粘贴地址栏的完整 URL..." disabled>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-success" onclick="startProcess()" disabled id="startProcessBtn">🚀 开始处理</button>
+            <button class="btn btn-secondary" onclick="clearAuth()" disabled id="clearAuthBtn">清空</button>
+        </div>
+
+        <!-- 安全令结果 -->
+        <div id="authResultArea" style="display:none;margin-top:16px;">
+            <label style="font-size:13px;font-weight:500;color:#333;">绑定结果（点击值可单独复制）：</label>
+            <div class="auth-result" id="authResult">
+                <div class="item">
+                    <div class="label">📋 序列号 (Serial)</div>
+                    <div class="value" id="authSerial" onclick="copyTextValue('authSerial')">-</div>
+                </div>
+                <div class="item">
+                    <div class="label">🔑 还原码 (Restore Code)</div>
+                    <div class="value" id="authRestore" onclick="copyTextValue('authRestore')">-</div>
+                </div>
+                <div class="item" style="grid-column:1/-1;">
+                    <div class="label">🔒 deviceSecret（密钥）</div>
+                    <div class="value" id="authSecret" onclick="copyTextValue('authSecret')" style="font-size:13px;">-</div>
+                </div>
+            </div>
+            <div class="btn-group" style="margin-top:10px;">
+                <button class="btn btn-outline" onclick="copyAllAuthResult()" disabled id="copyAllBtn">📋 复制全部结果</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // ================================================================
+    // ===== 配置 =====
+    // ================================================================
+
+    // ⚠️ 重要：替换成你的 Render 后端地址
+    const BACKEND_URL = 'https://battlenet-auth-cn.onrender.com';
+    // 访问密码（可修改）
+    const VALID_PASSWORD = 'battlenet2024';
+
+    let isUnlocked = false;
+    let currentAuthData = null;
+
+    // ================================================================
+    // ===== Toast 提示 =====
+    // ================================================================
+
+    function showToast(msg, type = 'info') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'show ' + type;
+        clearTimeout(t._hide);
+        t._hide = setTimeout(() => { t.className = ''; }, 3000);
+    }
+
+    // ================================================================
+    // ===== 状态栏 =====
+    // ================================================================
+
+    function setStatus(msg, type = '') {
+        const bar = document.getElementById('statusBar');
+        bar.textContent = msg;
+        bar.className = 'status-bar ' + type;
+    }
+
+    // ================================================================
+    // ===== 密码验证 =====
+    // ================================================================
+
+    function verifyPassword() {
+        const pwd = document.getElementById('globalPassword').value.trim();
+        if (!pwd) {
+            showToast('请输入访问密码', 'error');
+            setStatus('❌ 请输入密码', 'error');
+            return;
+        }
+        if (pwd !== VALID_PASSWORD) {
+            showToast('❌ 密码错误', 'error');
+            setStatus('❌ 密码错误', 'error');
+            return;
+        }
+
+        isUnlocked = true;
+        document.getElementById('passwordSection').className = 'password-section unlocked';
+        document.getElementById('passwordStatus').textContent = '🔓 已解锁';
+        document.getElementById('passwordStatus').className = 'password-status unlocked';
+
+        document.querySelectorAll('.form-group input').forEach(el => el.disabled = false);
+        document.getElementById('convertBtn').disabled = false;
+        document.getElementById('clearBtn').disabled = false;
+        document.getElementById('loginBtn').disabled = false;
+        document.getElementById('ssoToken').disabled = false;
+        document.getElementById('startProcessBtn').disabled = false;
+        document.getElementById('clearAuthBtn').disabled = false;
+        document.getElementById('copyAllBtn').disabled = false;
+
+        setStatus('✅ 已解锁，所有功能可用', 'success');
+        showToast('✅ 密码正确，已解锁全部功能', 'success');
+    }
+
+    // ================================================================
+    // ===== 工具一：账号密钥格式整理 =====
+    // ================================================================
+
+    function convertFormat() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        const mailPwd = document.getElementById('mailPwd').value.trim();
+        const sn = document.getElementById('sn').value.trim();
+        const code = document.getElementById('code').value.trim();
+        const key = document.getElementById('key').value.trim();
+
+        const cleanStr = mailPwd.replace(/-/g, ' ').trim();
+        const parts = cleanStr.split(/\s+/);
+        const email = parts[0] || '';
+        const pwd = parts.slice(1).join(' ') || '';
+
+        const result = `${email}{r}密码：${pwd}{r}序列号：${sn}{r}还原码：${code}{r}40位密钥：${key}`;
+        const resultBox = document.getElementById('result1');
+        resultBox.textContent = result || '（空）';
+        document.getElementById('tip1').classList.remove('show');
+        if (result) showToast('✅ 转换完成', 'success');
+    }
+
+    function clearAll() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        document.getElementById('mailPwd').value = '';
+        document.getElementById('sn').value = '';
+        document.getElementById('code').value = '';
+        document.getElementById('key').value = '';
+        document.getElementById('result1').innerHTML = '<span class="empty">等待转换...</span>';
+        document.getElementById('tip1').classList.remove('show');
+        showToast('已清空', 'info');
+    }
+
+    function copyResult(resultId, tipId) {
+        const box = document.getElementById(resultId);
+        const text = box.textContent.trim();
+        if (!text || text === '等待转换...' || text === '（空）') return;
+        copyToClipboard(text);
+        document.getElementById(tipId).classList.add('show');
+        setTimeout(() => {
+            document.getElementById(tipId).classList.remove('show');
+        }, 2000);
+    }
+
+    // ================================================================
+    // ===== 工具二：绑定暴雪安全令 =====
+    // ================================================================
+
+    function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(() => { fallbackCopy(text); });
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+
+    function copyTextValue(elementId) {
+        const el = document.getElementById(elementId);
+        const text = el.textContent.trim();
+        if (text && text !== '-') {
+            copyToClipboard(text);
+            showToast('✅ 已复制', 'success');
+        }
+    }
+
+    function copyAllAuthResult() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        const serial = document.getElementById('authSerial').textContent.trim();
+        const restore = document.getElementById('authRestore').textContent.trim();
+        const secret = document.getElementById('authSecret').textContent.trim();
+        if (serial === '-' || restore === '-' || secret === '-') {
+            showToast('没有完整的结果可复制', 'error');
+            return;
+        }
+        const text = `序列号：${serial}\n还原码：${restore}\ndeviceSecret：${secret}`;
+        copyToClipboard(text);
+        showToast('✅ 已复制全部结果', 'success');
+    }
+
+    // ===== 登录暴雪 =====
+    function openBattleNetLogin() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        window.open('https://account.battle.net/login/en/?ref=localhost', '_blank');
+        setStatus('已打开登录页，请登录后复制完整 URL', '');
+        showToast('✅ 已打开登录页', 'success');
+    }
+
+    // ===== 开始处理（自动提取 SSO Token） =====
+    async function startProcess() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+
+        const rawUrl = document.getElementById('ssoToken').value.trim();
+        if (!rawUrl) {
+            showToast('请先粘贴完整的地址栏 URL', 'error');
+            return;
+        }
+
+        // ✅ 自动提取 SSO Token（支持完整 URL 或纯 Token）
+        let ssoToken = rawUrl;
+        const match = rawUrl.match(/[?&]ST=([^&]+)/);
+        if (match) ssoToken = match[1];
+
+        if (!ssoToken || ssoToken.length < 10) {
+            showToast('未找到有效的 SSO Token，请检查 URL 是否正确', 'error');
+            return;
+        }
+
+        setStatus('⏳ 正在处理...', 'loading');
+        const btn = document.getElementById('startProcessBtn');
+        btn.disabled = true;
+
+        try {
+            // 步骤1：换取 Bearer Token
+            const res1 = await fetch(`${BACKEND_URL}/api/exchange-token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ssoToken })
+            });
+            const data1 = await res1.json();
+            if (!data1.bearerToken) throw new Error(data1.error || '换取 Token 失败');
+
+            // 步骤2：绑定安全令
+            const res2 = await fetch(`${BACKEND_URL}/api/bind-authenticator`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bearerToken: data1.bearerToken })
+            });
+            const data2 = await res2.json();
+            if (!data2.serial) throw new Error(data2.error || '绑定失败');
+
+            // 显示结果
+            document.getElementById('authSerial').textContent = data2.serial;
+            document.getElementById('authRestore').textContent = data2.restoreCode;
+            document.getElementById('authSecret').textContent = data2.deviceSecret;
+            document.getElementById('authResultArea').style.display = 'block';
+            currentAuthData = data2;
+
+            setStatus('✅ 绑定成功！', 'success');
+            showToast('🎉 安全令绑定成功！', 'success');
+
+        } catch (err) {
+            setStatus('❌ ' + err.message, 'error');
+            showToast('❌ ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function clearAuth() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        document.getElementById('ssoToken').value = '';
+        document.getElementById('authSerial').textContent = '-';
+        document.getElementById('authRestore').textContent = '-';
+        document.getElementById('authSecret').textContent = '-';
+        document.getElementById('authResultArea').style.display = 'none';
+        currentAuthData = null;
+        setStatus('已清空', '');
+        showToast('已清空', 'info');
+    }
+
+    // ================================================================
+    // ===== 页面加载时自动检测 URL 中的 SSO Token =====
+    // ================================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const st = params.get('ST');
+        if (st) {
+            document.getElementById('ssoToken').value = st;
+            setStatus('✅ 自动检测到 SSO Token，输入密码后点击「开始处理」', 'success');
+        } else {
+            setStatus('⚡ 请输入密码解锁全部功能', '');
+        }
+
+        if (!BACKEND_URL.includes('你的render地址')) {
+            console.log('✅ 后端地址已配置:', BACKEND_URL);
+        } else {
+            setStatus('⚠️ 请先配置 BACKEND_URL（替换成你的 Render 地址）', 'error');
+        }
+    });
+</script>
+
+</body>
+</html>
