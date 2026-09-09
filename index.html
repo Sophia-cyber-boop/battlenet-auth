@@ -392,12 +392,12 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- ===== 密码验证区域（后端验证） ===== -->
+    <!-- ===== 密码验证区域 ===== -->
     <!-- ============================================================ -->
     <div class="card">
         <div class="password-section locked" id="passwordSection">
             <label>🔑 访问密码</label>
-            <input type="password" id="globalPassword" placeholder="请输入访问密码...">
+            <input type="password" id="globalPassword" placeholder="请输入访问密码..." autocomplete="off">
             <button class="btn btn-primary" onclick="verifyPassword()">验证</button>
             <span class="password-status locked" id="passwordStatus">🔒 未解锁</span>
         </div>
@@ -449,7 +449,7 @@
         <div class="card-title">🔐 绑定暴雪安全令</div>
 
         <div class="hint-box">
-            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong>，系统会自动提取 <br>
+            💡 <strong>直接粘贴完整的地址栏 URL 即可</strong><br>
             例如：<code>https://account.battle.net/login/en/localhost?ST=US-xxxxx&flowTrackingId=xxx</code>
         </div>
 
@@ -498,11 +498,36 @@
     // ===== 配置 =====
     // ================================================================
 
-    // ⚠️ 重要：替换成你的 Render 后端地址
     const BACKEND_URL = 'https://battlenet-auth-cn.onrender.com';
 
     let isUnlocked = false;
     let currentAuthData = null;
+    let lastClickTime = 0;
+
+    // ================================================================
+    // ===== 防护：点击频率限制（2秒内只能点一次） =====
+    // ================================================================
+
+    function rateLimitClick() {
+        const now = Date.now();
+        if (now - lastClickTime < 2000) {
+            showToast('操作过于频繁，请稍后再试', 'error');
+            return false;
+        }
+        lastClickTime = now;
+        return true;
+    }
+
+    // ================================================================
+    // ===== 防护：XSS 转义 =====
+    // ================================================================
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
     // ================================================================
     // ===== Toast 提示 =====
@@ -527,10 +552,12 @@
     }
 
     // ================================================================
-    // ===== 密码验证（后端验证） =====
+    // ===== 密码验证（后端验证 + 前端防护） =====
     // ================================================================
 
     async function verifyPassword() {
+        if (!rateLimitClick()) return;
+
         const pwd = document.getElementById('globalPassword').value.trim();
         if (!pwd) {
             showToast('请输入访问密码', 'error');
@@ -564,6 +591,7 @@
                 document.getElementById('copyAllBtn').disabled = false;
                 document.getElementById('exportBtn').disabled = false;
 
+                document.getElementById('globalPassword').value = ''; // 清空密码框
                 setStatus('✅ 已解锁，所有功能可用', 'success');
                 showToast('✅ 密码正确，已解锁全部功能', 'success');
             } else {
@@ -577,7 +605,7 @@
     }
 
     // ================================================================
-    // ===== 工具一：账号密钥格式整理 =====
+    // ===== 工具一：账号密钥格式整理（带 XSS 防护） =====
     // ================================================================
 
     function convertFormat() {
@@ -589,10 +617,10 @@
 
         const cleanStr = mailPwd.replace(/-/g, ' ').trim();
         const parts = cleanStr.split(/\s+/);
-        const email = parts[0] || '';
-        const pwd = parts.slice(1).join(' ') || '';
+        const email = escapeHtml(parts[0] || '');
+        const pwd = escapeHtml(parts.slice(1).join(' ') || '');
 
-        const result = `${email}{r}密码：${pwd}{r}序列号：${sn}{r}还原码：${code}{r}40位密钥：${key}`;
+        const result = `${email}{r}密码：${pwd}{r}序列号：${escapeHtml(sn)}{r}还原码：${escapeHtml(code)}{r}40位密钥：${escapeHtml(key)}`;
         const resultBox = document.getElementById('result1');
         resultBox.textContent = result || '（空）';
         document.getElementById('tip1').classList.remove('show');
@@ -667,6 +695,8 @@
 
     // ===== 导出 TXT =====
     function exportTxt() {
+        if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+
         const serial = document.getElementById('authSerial').textContent.trim();
         const restore = document.getElementById('authRestore').textContent.trim();
         const secret = document.getElementById('authSecret').textContent.trim();
@@ -722,6 +752,7 @@ Device Secret: ${secret}`;
     // ===== 登录暴雪 =====
     function openBattleNetLogin() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        if (!rateLimitClick()) return;
         window.open('https://account.battle.net/login/en/?ref=localhost', '_blank');
         setStatus('已打开登录页，请登录后复制完整 URL', '');
         showToast('✅ 已打开登录页', 'success');
@@ -730,6 +761,7 @@ Device Secret: ${secret}`;
     // ===== 开始处理 =====
     async function startProcess() {
         if (!isUnlocked) { showToast('请先输入密码解锁', 'error'); return; }
+        if (!rateLimitClick()) return;
 
         const rawUrl = document.getElementById('ssoToken').value.trim();
         if (!rawUrl) {
@@ -797,7 +829,7 @@ Device Secret: ${secret}`;
     }
 
     // ================================================================
-    // ===== 页面加载时自动检测 URL 中的 SSO Token =====
+    // ===== 页面加载 =====
     // ================================================================
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -810,11 +842,7 @@ Device Secret: ${secret}`;
             setStatus('⚡ 请输入密码解锁全部功能', '');
         }
 
-        if (!BACKEND_URL.includes('你的render地址')) {
-            console.log('✅ 后端地址已配置:', BACKEND_URL);
-        } else {
-            setStatus('⚠️ 请先配置 BACKEND_URL（替换成你的 Render 地址）', 'error');
-        }
+        console.log('✅ 后端地址:', BACKEND_URL);
     });
 </script>
 
