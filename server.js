@@ -6,12 +6,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const VALID_PASSWORD = 'dong1dong12024';
+
+// ===== 密码验证 =====
+app.post('/api/verify-password', (req, res) => {
+  const { password } = req.body;
+  res.json({ valid: password === VALID_PASSWORD });
+});
+
 // ===== 健康检查 =====
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// ===== 步骤1：用 SSO Token 换取 Bearer Token =====
+// ===== 换取 Bearer Token =====
 app.post('/api/exchange-token', async (req, res) => {
   const { ssoToken } = req.body;
   if (!ssoToken) {
@@ -45,7 +53,7 @@ app.post('/api/exchange-token', async (req, res) => {
   }
 });
 
-// ===== 步骤2：用 Bearer Token 绑定安全令 =====
+// ===== 绑定安全令 =====
 app.post('/api/bind-authenticator', async (req, res) => {
   const { bearerToken } = req.body;
   if (!bearerToken) {
