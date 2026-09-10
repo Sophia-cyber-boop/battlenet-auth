@@ -51,7 +51,7 @@ app.use('/api/verify-password', passwordLimiter);
 // 3. 密码错误记录（防暴力破解）
 // =============================================================
 const wrongPasswordAttempts = new Map();
-const VALID_PASSWORD = 'battlenet2024';  // ← 你可以改这个密码
+const VALID_PASSWORD = '95866253';  // ← 你可以改这个密码
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
